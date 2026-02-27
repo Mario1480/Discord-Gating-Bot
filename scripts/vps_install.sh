@@ -28,6 +28,7 @@ fi
 REPO_URL=""
 BRANCH=""
 INSTALL_DIR="${TARGET_HOME}/discord-gating-bot"
+REPO_ROOT=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -126,7 +127,7 @@ resolve_repo_root() {
   candidate_root="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
   if [[ -f "${candidate_root}/docker-compose.yml" && -f "${candidate_root}/.env.example" ]]; then
-    echo "${candidate_root}"
+    REPO_ROOT="${candidate_root}"
     return 0
   fi
 
@@ -153,7 +154,7 @@ clone_repo_if_requested() {
       run_as_target_user git -C "${INSTALL_DIR}" pull --ff-only origin "${BRANCH}"
     fi
 
-    echo "${INSTALL_DIR}"
+    REPO_ROOT="${INSTALL_DIR}"
     return 0
   fi
 
@@ -170,15 +171,15 @@ clone_repo_if_requested() {
   clone_cmd+=("${REPO_URL}" "${INSTALL_DIR}")
 
   run_as_target_user "${clone_cmd[@]}"
-  echo "${INSTALL_DIR}"
+  REPO_ROOT="${INSTALL_DIR}"
   return 0
 }
 
 install_docker
 
-if REPO_ROOT="$(clone_repo_if_requested)"; then
+if clone_repo_if_requested; then
   true
-elif REPO_ROOT="$(resolve_repo_root)"; then
+elif resolve_repo_root; then
   true
 else
   echo "Could not detect repository root from script location."
