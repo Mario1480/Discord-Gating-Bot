@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RuleType {
+  TOKEN_AMOUNT
+  TOKEN_USD
+  NFT_COLLECTION
+}
+
+enum PriceSource {
+  COINGECKO
+}
+
+enum AuditAction {
+  ROLE_ADDED
+  ROLE_REMOVED
+  VERIFY_SUCCESS
+  VERIFY_REPLACED
+  VERIFY_UNLINKED
+}
+
+model Guild {
+  guildId     String       @id @map("guild_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  walletLinks WalletLink[]
+  gatingRules GatingRule[]
+
+  @@map("guilds")
+}
+
+model WalletLink {
+  id            String    @id @default(uuid())
+  guildId       String    @map("guild_id")
+  discordUserId String    @map("discord_user_id")
+  walletPubkey  String    @map("wallet_pubkey")
+  verifiedAt    DateTime  @map("verified_at")
+  lastCheckedAt DateTime? @map("last_checked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@unique([guildId, discordUserId])
+  @@index([guildId])
+  @@index([discordUserId])
+  @@map("wallet_links")
+}
+
+model VerifySession {
+  id               String    @id @default(uuid())
+  guildId          String    @map("guild_id")
+  discordUserId    String    @map("discord_user_id")
+  nonce            String    @unique
+  challengeMessage String    @map("challenge_message")
+  expiresAt        DateTime  @map("expires_at")
+  usedAt           DateTime? @map("used_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([guildId, discordUserId])
+  @@index([expiresAt])
+  @@map("verify_sessions")
+}
+
+model OauthState {
+  state        String    @id
+  nonce        String
+  redirectPath String    @map("redirect_path")
+  expiresAt    DateTime  @map("expires_at")
+  usedAt       DateTime? @map("used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("oauth_states")
+}
+
+model GatingRule {
+  id                     String       @id @default(uuid())
+  guildId                String       @map("guild_id")
+  type                   RuleType
+  mint                   String?
+  collection             String?
+  thresholdAmount        Decimal?     @db.Decimal(38, 12) @map("threshold_amount")
+  thresholdUsd           Decimal?     @db.Decimal(38, 12) @map("threshold_usd")
+  thresholdCount         Int?         @map("threshold_count")
+  roleId                 String       @map("role_id")
+  priceSource            PriceSource? @map("price_source")
+  priceAssetId           String?      @map("price_asset_id")
+  enabled                Boolean      @default(true)
+  createdByDiscordUserId String       @map("created_by_discord_user_id")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  guild Guild @relation(fields: [guildId], references: [guildId], onDelete: Cascade)
+
+  @@index([guildId, enabled])
+  @@index([guildId, roleId])
+  @@index([type, mint])
+  @@index([type, collection])
+  @@map("gating_rules")
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  timestamp     DateTime    @default(now())
+  guildId       String      @map("guild_id")
+  discordUserId String      @map("discord_user_id")
+  ruleId        String?     @map("rule_id")
+  roleId        String      @map("role_id")
+  action        AuditAction
+  reason        String
+
+  @@index([guildId, timestamp])
+  @@index([discordUserId, timestamp])
+  @@map("audit_log")
+}
+
+model PriceCache {
+  assetId   String   @id @map("asset_id")
+  priceUsd  Decimal  @db.Decimal(38, 12) @map("price_usd")
+  fetchedAt DateTime @map("fetched_at")
+
+  @@index([fetchedAt])
+  @@map("price_cache")
+}

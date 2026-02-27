@@ -1,0 +1,258 @@
+:root {
+  --bg-start: #f7e4ce;
+  --bg-end: #d8f4ea;
+  --panel: rgba(255, 255, 255, 0.82);
+  --border: rgba(18, 36, 34, 0.15);
+  --text: #102723;
+  --muted: #3d5a56;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --danger: #b42318;
+  --shadow: 0 10px 28px rgba(13, 54, 48, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1000px 500px at 15% -10%, rgba(252, 211, 77, 0.4), transparent),
+    radial-gradient(900px 420px at 90% 0%, rgba(45, 212, 191, 0.35), transparent),
+    linear-gradient(170deg, var(--bg-start), var(--bg-end));
+}
+
+.shell {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 1.5rem auto 2.25rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(4px);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem;
+  align-items: center;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.8vw, 1.8rem);
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.muted,
+.rule-meta {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.layout-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+section.panel {
+  padding: 1rem 1.1rem;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rule-list {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.rule-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.rule-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.rule-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+}
+
+.btn-danger {
+  color: #ffffff;
+  border-color: transparent;
+  background: var(--danger);
+}
+
+.message {
+  margin: 1rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.message.error {
+  background: rgba(180, 35, 24, 0.12);
+  border: 1px solid rgba(180, 35, 24, 0.3);
+}
+
+.message.success {
+  background: rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(15, 118, 110, 0.3);
+}
+
+.audit-table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+.login-panel {
+  padding: 1.3rem;
+  max-width: 480px;
+  margin: 6rem auto;
+  text-align: center;
+}
+
+.login-panel .btn {
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 960px) {
+  .layout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions select,
+  .topbar-actions .btn {
+    flex: 1;
+  }
+
+  .rule-item {
+    flex-direction: column;
+  }
+
+  .rule-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

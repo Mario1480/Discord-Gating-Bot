@@ -1,0 +1,54 @@
+{
+  "name": "discord-gating-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for Solana token/NFT role gating",
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "npm run build:admin && tsc -p tsconfig.json",
+    "build:admin": "vite build --config web-admin/vite.config.ts",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "dev:admin": "vite --config web-admin/vite.config.ts",
+    "start:3001": "bash scripts/local_start_3001.sh",
+    "smoke:3001": "bash scripts/smoke_3001.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "commands:register": "tsx src/bot/registerCommands.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.4.2",
+    "@fastify/static": "^8.1.1",
+    "@prisma/client": "^6.4.1",
+    "@solana/spl-token": "^0.4.11",
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0",
+    "discord-api-types": "^0.37.119",
+    "discord.js": "^14.19.2",
+    "fastify": "^5.2.1",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.0.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tweetnacl": "^1.0.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^22.13.8",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "prisma": "^6.4.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vite": "^5.4.14",
+    "vitest": "^3.0.8"
+  }
+}
