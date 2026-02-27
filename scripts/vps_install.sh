@@ -1,11 +1,59 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "${REPO_ROOT}"
+usage() {
+  cat <<'USAGE'
+Usage:
+  ./scripts/vps_install.sh [--repo <git_url>] [--branch <branch>] [--dir <install_dir>]
 
+Modes:
+  1) Run inside an already cloned repository (no --repo needed).
+  2) Clone directly from GitHub/Git (--repo) and install from there.
+
+Examples:
+  ./scripts/vps_install.sh
+  ./scripts/vps_install.sh --repo https://github.com/<owner>/<repo>.git --branch main
+  ./scripts/vps_install.sh --repo git@github.com:<owner>/<repo>.git --dir /opt/discord-gating-bot
+USAGE
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_USER="${SUDO_USER:-$USER}"
+if command -v getent >/dev/null 2>&1; then
+  TARGET_HOME="$(getent passwd "${TARGET_USER}" | cut -d: -f6 2>/dev/null || echo "${HOME}")"
+else
+  TARGET_HOME="${HOME}"
+fi
+
+REPO_URL=""
+BRANCH=""
+INSTALL_DIR="${TARGET_HOME}/discord-gating-bot"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --repo)
+      REPO_URL="${2:-}"
+      shift 2
+      ;;
+    --branch)
+      BRANCH="${2:-}"
+      shift 2
+      ;;
+    --dir)
+      INSTALL_DIR="${2:-}"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 if [[ "$(id -u)" -eq 0 ]]; then
   SUDO=""
@@ -24,7 +72,15 @@ fi
 
 echo "==> Installing base packages..."
 ${SUDO} apt-get update -y
-${SUDO} apt-get install -y ca-certificates curl gnupg lsb-release
+${SUDO} apt-get install -y ca-certificates curl gnupg lsb-release git
+
+run_as_target_user() {
+  if [[ "$(id -u)" -eq 0 && "${TARGET_USER}" != "root" ]]; then
+    ${SUDO} -u "${TARGET_USER}" -H "$@"
+  else
+    "$@"
+  fi
+}
 
 install_docker() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -65,7 +121,73 @@ install_docker() {
   fi
 }
 
+resolve_repo_root() {
+  local candidate_root
+  candidate_root="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+  if [[ -f "${candidate_root}/docker-compose.yml" && -f "${candidate_root}/.env.example" ]]; then
+    echo "${candidate_root}"
+    return 0
+  fi
+
+  return 1
+}
+
+clone_repo_if_requested() {
+  if [[ -z "${REPO_URL}" ]]; then
+    return 1
+  fi
+
+  echo "==> Preparing repository from ${REPO_URL}"
+  local install_parent
+  install_parent="$(dirname "${INSTALL_DIR}")"
+  ${SUDO} mkdir -p "${install_parent}"
+  ${SUDO} chown "${TARGET_USER}:${TARGET_USER}" "${install_parent}" || true
+
+  if [[ -d "${INSTALL_DIR}/.git" ]]; then
+    echo "==> Existing git repo found in ${INSTALL_DIR}; reusing it."
+    run_as_target_user git -C "${INSTALL_DIR}" fetch --all --prune
+
+    if [[ -n "${BRANCH}" ]]; then
+      run_as_target_user git -C "${INSTALL_DIR}" checkout "${BRANCH}"
+      run_as_target_user git -C "${INSTALL_DIR}" pull --ff-only origin "${BRANCH}"
+    fi
+
+    echo "${INSTALL_DIR}"
+    return 0
+  fi
+
+  if [[ -e "${INSTALL_DIR}" && -n "$(ls -A "${INSTALL_DIR}" 2>/dev/null)" ]]; then
+    echo "Install dir is not empty and is not a git repo: ${INSTALL_DIR}"
+    echo "Choose another --dir or clean it up."
+    exit 1
+  fi
+
+  local clone_cmd=(git clone)
+  if [[ -n "${BRANCH}" ]]; then
+    clone_cmd+=(--branch "${BRANCH}" --single-branch)
+  fi
+  clone_cmd+=("${REPO_URL}" "${INSTALL_DIR}")
+
+  run_as_target_user "${clone_cmd[@]}"
+  echo "${INSTALL_DIR}"
+  return 0
+}
+
 install_docker
+
+if REPO_ROOT="$(clone_repo_if_requested)"; then
+  true
+elif REPO_ROOT="$(resolve_repo_root)"; then
+  true
+else
+  echo "Could not detect repository root from script location."
+  echo "Run with --repo <git_url> to clone directly from GitHub."
+  exit 1
+fi
+
+echo "==> Using repository: ${REPO_ROOT}"
+cd "${REPO_ROOT}"
 
 if docker info >/dev/null 2>&1; then
   DOCKER=(docker)
