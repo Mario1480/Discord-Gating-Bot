@@ -37,6 +37,18 @@ if [[ -z "${APP_PORT}" ]]; then
   APP_PORT="3000"
 fi
 
+ENABLE_CADDY_RAW="$(sed -n 's/^ENABLE_CADDY=//p' .env | head -n1)"
+ENABLE_CADDY_NORMALIZED="$(echo "${ENABLE_CADDY_RAW}" | tr '[:upper:]' '[:lower:]')"
+if [[ "${ENABLE_CADDY_NORMALIZED}" == "true" || "${ENABLE_CADDY_NORMALIZED}" == "1" ]]; then
+  ENABLE_CADDY="true"
+else
+  ENABLE_CADDY="false"
+fi
+
+CADDY_DOMAIN="$(sed -n 's/^CADDY_DOMAIN=//p' .env | head -n1)"
+CADDY_DOMAIN="${CADDY_DOMAIN%\"}"
+CADDY_DOMAIN="${CADDY_DOMAIN#\"}"
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required. Run scripts/vps_install.sh first."
   exit 1
@@ -47,6 +59,12 @@ if docker info >/dev/null 2>&1; then
 else
   DOCKER=(${SUDO} docker)
 fi
+
+COMPOSE_FILES=(-f docker-compose.yml)
+if [[ "${ENABLE_CADDY}" == "true" ]]; then
+  COMPOSE_FILES+=(-f docker-compose.caddy.yml)
+fi
+COMPOSE_CMD=("${DOCKER[@]}" compose "${COMPOSE_FILES[@]}")
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Working tree has local changes. Commit/stash them before update."
@@ -71,7 +89,7 @@ else
 fi
 
 echo "==> Rebuilding and restarting containers..."
-"${DOCKER[@]}" compose up -d --build
+"${COMPOSE_CMD[@]}" up -d --build
 
 echo "==> Waiting for health endpoint..."
 healthy=0
@@ -85,18 +103,25 @@ done
 
 if [[ "${healthy}" -ne 1 ]]; then
   echo "Health check failed. Last logs:"
-  "${DOCKER[@]}" compose logs --tail=120 app postgres
+  if [[ "${ENABLE_CADDY}" == "true" ]]; then
+    "${COMPOSE_CMD[@]}" logs --tail=120 app postgres caddy
+  else
+    "${COMPOSE_CMD[@]}" logs --tail=120 app postgres
+  fi
   exit 1
 fi
 
 echo "==> Registering slash commands..."
-"${DOCKER[@]}" compose exec -T app node dist/bot/registerCommands.js
+"${COMPOSE_CMD[@]}" exec -T app node dist/bot/registerCommands.js
 
 echo
 echo "Update finished successfully."
 echo "- Branch: ${CURRENT_BRANCH}"
 echo "- App health: http://localhost:${APP_PORT}/healthz"
+if [[ "${ENABLE_CADDY}" == "true" && -n "${CADDY_DOMAIN}" ]]; then
+  echo "- Admin UI:   https://${CADDY_DOMAIN}/admin"
+fi
 echo
 echo "Useful commands:"
-echo "  ${DOCKER[*]} compose ps"
-echo "  ${DOCKER[*]} compose logs -f app"
+echo "  ${COMPOSE_CMD[*]} ps"
+echo "  ${COMPOSE_CMD[*]} logs -f app"

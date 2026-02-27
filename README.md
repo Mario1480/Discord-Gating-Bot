@@ -85,11 +85,32 @@ What it does:
 - can clone the repository from GitHub (`--repo`, optional `--branch`, `--dir`)
 - creates `.env` from `.env.example` (if missing)
 - supports custom host port via `APP_PORT` in `.env` (default `3000`)
+- supports optional Caddy reverse-proxy + TLS via `ENABLE_CADDY=true`
 - sets Docker-internal `DATABASE_URL` (`postgres` service host)
 - validates required `.env` secrets/URLs
 - runs `docker compose up -d --build`
 - health-checks `http://localhost:$APP_PORT/healthz` (default `3000`)
 - registers slash commands inside the app container
+
+### Caddy (HTTPS + Domain)
+
+To run behind Caddy with automatic TLS:
+
+```env
+ENABLE_CADDY=true
+CADDY_DOMAIN=gatingbot.utrade.vip
+APP_PORT=3001
+VERIFY_BASE_URL=https://gatingbot.utrade.vip/verify
+ADMIN_UI_BASE_URL=https://gatingbot.utrade.vip/admin
+```
+
+Then deploy with the same install/update scripts.
+
+Notes:
+- Ports `80` and `443` must be open on your VPS firewall/security group.
+- In Discord Developer Portal, add OAuth redirect:
+  `https://gatingbot.utrade.vip/auth/callback`
+- Keep `APP_PORT` on a free local host port (not `80`/`443`).
 
 ### VPS Update Script (Ubuntu/Debian)
 
@@ -123,7 +144,7 @@ What it does:
 
 ## Admin UI
 
-- Open `http://localhost:3000/admin`
+- Open `http://localhost:$APP_PORT/admin` (or your HTTPS domain when Caddy is enabled)
 - Sign in with Discord (OAuth)
 - Choose a guild and manage rules
 - Trigger manual rechecks and inspect recent audit events

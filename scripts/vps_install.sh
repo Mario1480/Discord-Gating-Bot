@@ -222,6 +222,36 @@ if [[ -z "${APP_PORT}" ]]; then
   APP_PORT="3000"
 fi
 
+if grep -q '^ENABLE_CADDY=' .env; then
+  ENABLE_CADDY_RAW="$(sed -n 's/^ENABLE_CADDY=//p' .env | head -n1)"
+else
+  ENABLE_CADDY_RAW="false"
+  echo "ENABLE_CADDY=${ENABLE_CADDY_RAW}" >> .env
+fi
+ENABLE_CADDY_NORMALIZED="$(echo "${ENABLE_CADDY_RAW}" | tr '[:upper:]' '[:lower:]')"
+
+if [[ "${ENABLE_CADDY_NORMALIZED}" == "true" || "${ENABLE_CADDY_NORMALIZED}" == "1" ]]; then
+  ENABLE_CADDY="true"
+else
+  ENABLE_CADDY="false"
+fi
+
+if [[ "${ENABLE_CADDY}" == "true" ]]; then
+  CADDY_DOMAIN="$(sed -n 's/^CADDY_DOMAIN=//p' .env | head -n1)"
+  CADDY_DOMAIN="${CADDY_DOMAIN%\"}"
+  CADDY_DOMAIN="${CADDY_DOMAIN#\"}"
+
+  if [[ -z "${CADDY_DOMAIN}" ]]; then
+    echo "Missing required .env value: CADDY_DOMAIN (ENABLE_CADDY=true)"
+    exit 1
+  fi
+
+  if [[ "${APP_PORT}" == "80" || "${APP_PORT}" == "443" ]]; then
+    echo "APP_PORT must not be 80/443 when ENABLE_CADDY=true (reserved for Caddy)."
+    exit 1
+  fi
+fi
+
 echo "==> Ensuring Docker-internal DATABASE_URL in .env"
 if grep -q '^DATABASE_URL=' .env; then
   sed -i.bak 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://postgres:postgres@postgres:5432/discord_gating#' .env
@@ -277,8 +307,19 @@ if grep -q '^VERIFY_BASE_URL=http://localhost' .env || grep -q '^ADMIN_UI_BASE_U
   echo "For production, set them to your public domain (https://...)."
 fi
 
+if [[ "${ENABLE_CADDY}" == "true" ]] && (grep -q '^VERIFY_BASE_URL=http://' .env || grep -q '^ADMIN_UI_BASE_URL=http://' .env); then
+  echo "Warning: ENABLE_CADDY=true but VERIFY_BASE_URL/ADMIN_UI_BASE_URL still use http."
+  echo "Use https URLs with your domain for Discord OAuth (recommended)."
+fi
+
+COMPOSE_FILES=(-f docker-compose.yml)
+if [[ "${ENABLE_CADDY}" == "true" ]]; then
+  COMPOSE_FILES+=(-f docker-compose.caddy.yml)
+fi
+COMPOSE_CMD=("${DOCKER[@]}" compose "${COMPOSE_FILES[@]}")
+
 echo "==> Building and starting containers..."
-"${DOCKER[@]}" compose up -d --build
+"${COMPOSE_CMD[@]}" up -d --build
 
 echo "==> Waiting for health endpoint..."
 healthy=0
@@ -292,18 +333,26 @@ done
 
 if [[ "${healthy}" -ne 1 ]]; then
   echo "Health check failed. Last logs:"
-  "${DOCKER[@]}" compose logs --tail=120 app postgres
+  if [[ "${ENABLE_CADDY}" == "true" ]]; then
+    "${COMPOSE_CMD[@]}" logs --tail=120 app postgres caddy
+  else
+    "${COMPOSE_CMD[@]}" logs --tail=120 app postgres
+  fi
   exit 1
 fi
 
 echo "==> Registering slash commands..."
-"${DOCKER[@]}" compose exec -T app node dist/bot/registerCommands.js
+"${COMPOSE_CMD[@]}" exec -T app node dist/bot/registerCommands.js
 
 echo
 echo "VPS install finished successfully."
 echo "- App health: http://localhost:${APP_PORT}/healthz"
-echo "- Admin UI:   http://localhost:${APP_PORT}/admin"
+if [[ "${ENABLE_CADDY}" == "true" ]]; then
+  echo "- Admin UI:   https://${CADDY_DOMAIN}/admin"
+else
+  echo "- Admin UI:   http://localhost:${APP_PORT}/admin"
+fi
 echo
 echo "Useful commands:"
-echo "  ${DOCKER[*]} compose ps"
-echo "  ${DOCKER[*]} compose logs -f app"
+echo "  ${COMPOSE_CMD[*]} ps"
+echo "  ${COMPOSE_CMD[*]} logs -f app"
