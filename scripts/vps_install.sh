@@ -24,6 +24,8 @@ if command -v getent >/dev/null 2>&1; then
 else
   TARGET_HOME="${HOME}"
 fi
+ORIG_ARGS=("$@")
+SELF_REEXEC_DONE="${SELF_REEXEC_DONE:-0}"
 
 REPO_URL=""
 BRANCH=""
@@ -147,11 +149,19 @@ clone_repo_if_requested() {
 
   if [[ -d "${INSTALL_DIR}/.git" ]]; then
     echo "==> Existing git repo found in ${INSTALL_DIR}; reusing it."
+    local old_rev new_rev
+    old_rev="$(run_as_target_user git -C "${INSTALL_DIR}" rev-parse HEAD 2>/dev/null || echo "")"
     run_as_target_user git -C "${INSTALL_DIR}" fetch --all --prune
 
     if [[ -n "${BRANCH}" ]]; then
       run_as_target_user git -C "${INSTALL_DIR}" checkout "${BRANCH}"
       run_as_target_user git -C "${INSTALL_DIR}" pull --ff-only origin "${BRANCH}"
+    fi
+    new_rev="$(run_as_target_user git -C "${INSTALL_DIR}" rev-parse HEAD 2>/dev/null || echo "")"
+
+    if [[ "${SELF_REEXEC_DONE}" != "1" && -n "${old_rev}" && -n "${new_rev}" && "${old_rev}" != "${new_rev}" ]]; then
+      echo "==> Repository was updated during install. Restarting installer with latest script..."
+      exec env SELF_REEXEC_DONE=1 bash "${INSTALL_DIR}/scripts/vps_install.sh" "${ORIG_ARGS[@]}"
     fi
 
     REPO_ROOT="${INSTALL_DIR}"
