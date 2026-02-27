@@ -72,8 +72,17 @@ chmod +x scripts/vps_install.sh
 ./scripts/vps_install.sh
 ```
 
+Directly from GitHub (without manual clone first):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/<branch>/scripts/vps_install.sh -o vps_install.sh
+chmod +x vps_install.sh
+./vps_install.sh --repo https://github.com/<owner>/<repo>.git --branch <branch>
+```
+
 What it does:
 - installs Docker Engine + Compose (if missing)
+- can clone the repository from GitHub (`--repo`, optional `--branch`, `--dir`)
 - creates `.env` from `.env.example` (if missing)
 - sets Docker-internal `DATABASE_URL` (`postgres` service host)
 - validates required `.env` secrets/URLs
