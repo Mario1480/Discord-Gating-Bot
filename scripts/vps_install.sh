@@ -211,6 +211,17 @@ if [[ ! -f ".env" ]]; then
   cp .env.example .env
 fi
 
+if grep -q '^APP_PORT=' .env; then
+  APP_PORT="$(sed -n 's/^APP_PORT=//p' .env | head -n1)"
+else
+  APP_PORT="3000"
+  echo "APP_PORT=${APP_PORT}" >> .env
+fi
+
+if [[ -z "${APP_PORT}" ]]; then
+  APP_PORT="3000"
+fi
+
 echo "==> Ensuring Docker-internal DATABASE_URL in .env"
 if grep -q '^DATABASE_URL=' .env; then
   sed -i.bak 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://postgres:postgres@postgres:5432/discord_gating#' .env
@@ -272,7 +283,7 @@ echo "==> Building and starting containers..."
 echo "==> Waiting for health endpoint..."
 healthy=0
 for _ in $(seq 1 40); do
-  if curl -fsS http://localhost:3000/healthz >/dev/null 2>&1; then
+  if curl -fsS "http://localhost:${APP_PORT}/healthz" >/dev/null 2>&1; then
     healthy=1
     break
   fi
@@ -290,8 +301,8 @@ echo "==> Registering slash commands..."
 
 echo
 echo "VPS install finished successfully."
-echo "- App health: http://localhost:3000/healthz"
-echo "- Admin UI:   http://localhost:3000/admin"
+echo "- App health: http://localhost:${APP_PORT}/healthz"
+echo "- Admin UI:   http://localhost:${APP_PORT}/admin"
 echo
 echo "Useful commands:"
 echo "  ${DOCKER[*]} compose ps"

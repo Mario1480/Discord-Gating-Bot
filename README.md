@@ -84,10 +84,11 @@ What it does:
 - installs Docker Engine + Compose (if missing)
 - can clone the repository from GitHub (`--repo`, optional `--branch`, `--dir`)
 - creates `.env` from `.env.example` (if missing)
+- supports custom host port via `APP_PORT` in `.env` (default `3000`)
 - sets Docker-internal `DATABASE_URL` (`postgres` service host)
 - validates required `.env` secrets/URLs
 - runs `docker compose up -d --build`
-- health-checks `http://localhost:3000/healthz`
+- health-checks `http://localhost:$APP_PORT/healthz` (default `3000`)
 - registers slash commands inside the app container
 
 ### VPS Update Script (Ubuntu/Debian)
@@ -103,7 +104,7 @@ What it does:
 - verifies clean git working tree
 - pulls latest changes (`--ff-only`) for current branch
 - rebuilds and restarts Docker services
-- waits for app health on `http://localhost:3000/healthz`
+- waits for app health on `http://localhost:$APP_PORT/healthz` (default `3000`)
 - re-registers slash commands
 
 ## Commands

@@ -32,6 +32,11 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
+APP_PORT="$(sed -n 's/^APP_PORT=//p' .env | head -n1)"
+if [[ -z "${APP_PORT}" ]]; then
+  APP_PORT="3000"
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required. Run scripts/vps_install.sh first."
   exit 1
@@ -71,7 +76,7 @@ echo "==> Rebuilding and restarting containers..."
 echo "==> Waiting for health endpoint..."
 healthy=0
 for _ in $(seq 1 40); do
-  if curl -fsS http://localhost:3000/healthz >/dev/null 2>&1; then
+  if curl -fsS "http://localhost:${APP_PORT}/healthz" >/dev/null 2>&1; then
     healthy=1
     break
   fi
@@ -90,7 +95,7 @@ echo "==> Registering slash commands..."
 echo
 echo "Update finished successfully."
 echo "- Branch: ${CURRENT_BRANCH}"
-echo "- App health: http://localhost:3000/healthz"
+echo "- App health: http://localhost:${APP_PORT}/healthz"
 echo
 echo "Useful commands:"
 echo "  ${DOCKER[*]} compose ps"
